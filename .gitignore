@@ -1,0 +1,31 @@
+# System files
+.DS_Store
+
+# Python Environments
+venv/
+.venv/
+
+# Node Modules
+node_modules/
+
+# Python Compilation Files
+__pycache__/
+*.pyc
+
+# Personal Data & Raw Exports
+apple_health_export/
+*.xml
+*.csv
+
+# Output & Dynamically Generated Data
+output_plots/
+
+# Backend Specifics
+backend/venv/
+backend/uploads/
+backend/processed_data/
+backend/test_export.xml
+
+# Environment Variables
+.env
+.env.local
