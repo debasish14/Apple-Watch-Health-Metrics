@@ -20,6 +20,7 @@ METRIC_TABLES = {
     "vo2max": "gold_vo2max",
     "weight": "gold_weight",
     "activity": "gold_daily_activity",
+    "calendar": "gold_daily_calendar",
     "sleep": "gold_daily_sleep",
     "workouts": "gold_workouts",
     "workout-summary": "gold_workout_summary",
@@ -86,5 +87,11 @@ def dashboard_payload() -> dict:
                 con,
                 "SELECT activity AS name, n_workouts AS value, total_kcal "
                 "FROM gold_workout_summary ORDER BY n_workouts DESC",
+            ),
+            "calendar": _rows(
+                con,
+                "SELECT strftime(local_date, '%Y-%m-%d') AS date, steps, "
+                "active_kcal, distance_km, level_kcal, level_steps "
+                "FROM gold_daily_calendar ORDER BY local_date",
             ),
         }
