@@ -40,11 +40,17 @@ never touches XML at request time.
 ## Quick start
 
 ```bash
-make setup                                   # venv + pip + npm install
-make ingest EXPORT=path/to/export.xml        # run the pipeline
-make serve                                   # Flask API on :5001
-make frontend                                # Vite dev server on :5173 (proxies /api)
-make test                                    # pytest suite (synthetic-XML e2e)
+# 1. venv + pip + npm install
+make setup
+
+# 2. run the pipeline (EXPORT defaults to apple_health_export/export.xml)
+make ingest
+
+# 3. Flask API on :5001 — in a second terminal: `make frontend` (Vite on :5173)
+make serve
+
+# run the test suite
+make test
 ```
 
 Get an export: iPhone Health app → profile picture → *Export All Health Data*.
