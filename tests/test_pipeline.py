@@ -80,6 +80,21 @@ class TestGold:
         w = one(gold, "SELECT latest_weight FROM gold_summary")[0]
         assert w == 81.5
 
+    def test_calendar_levels(self, gold):
+        # 2025-12-01 has the only step count (1000): a single active day
+        # lands in ntile bucket 1; no ActiveEnergyBurned records -> level 0.
+        steps, lvl_steps, lvl_kcal = one(
+            gold, "SELECT steps, level_steps, level_kcal FROM gold_daily_calendar "
+                  "WHERE local_date = DATE '2025-12-01'")
+        assert steps == 1000
+        assert lvl_steps == 1
+        assert lvl_kcal == 0
+        # levels always within the GitHub 0-4 palette range
+        bad = one(gold, "SELECT count(*) FROM gold_daily_calendar "
+                        "WHERE level_steps NOT BETWEEN 0 AND 4 "
+                        "   OR level_kcal NOT BETWEEN 0 AND 4")[0]
+        assert bad == 0
+
 
 class TestQuality:
     def test_checks_evaluated(self, pipeline_env):
@@ -115,6 +130,8 @@ class TestAPI:
         assert body["summary"]["total_workouts"] == 2
         assert body["heartRate"][0] == {"date": "2025-12-01", "value": 70.0}
         assert {w["name"] for w in body["workouts"]} == {"Walking", "Cycling"}
+        assert body["calendar"][0]["date"] == "2025-12-01"
+        assert body["calendar"][0]["level_steps"] == 1
 
     def test_metric_endpoint_and_whitelist(self, client):
         rows = client.get("/api/metrics/activity").get_json()

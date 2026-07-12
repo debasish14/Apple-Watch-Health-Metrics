@@ -3,6 +3,7 @@ import UploadZone from './UploadZone';
 import MetricCard from './MetricCard';
 import HeartRateChart from './HeartRateChart';
 import WorkoutChart from './WorkoutChart';
+import ActivityCalendar from './ActivityCalendar';
 import ThemeToggle from './ThemeToggle';
 import { Activity, Heart, Scale, Flame } from 'lucide-react';
 
@@ -44,8 +45,8 @@ const Dashboard = () => {
                     <h1 className="text-3xl font-bold tracking-tight">Health Data Insights</h1>
                     <p className="text-muted-foreground">Visualize your Apple Watch export data.</p>
                 </div>
-                <div className="w-full md:w-auto">
-                    {/* Could put a small refresh button or date picker here */}
+                <div className="w-full md:w-auto flex justify-end">
+                    <ThemeToggle />
                 </div>
             </header>
 
@@ -82,6 +83,9 @@ const Dashboard = () => {
                             subtext="Active energy across workouts"
                         />
                     </div>
+
+                    {/* Daily activity heatmap */}
+                    <ActivityCalendar data={metrics.calendar} />
 
                     {/* Charts */}
                     <div className="grid gap-4 md:grid-cols-2">

@@ -94,6 +94,31 @@ def build() -> dict:
         """
     )
 
+    # -- calendar heatmap: GitHub-style intensity levels -----------------------
+    # Level 1-4 = quartile of the metric across the user's active (non-zero)
+    # days, so colors are relative to their own typical day; 0 = no activity.
+    # Precomputed here so the frontend never derives analytics client-side.
+    con.execute(
+        """
+        CREATE OR REPLACE TABLE gold_daily_calendar AS
+        WITH kcal_ranked AS (
+            SELECT local_date, ntile(4) OVER (ORDER BY active_kcal) AS lvl
+            FROM gold_daily_activity WHERE active_kcal > 0
+        ),
+        steps_ranked AS (
+            SELECT local_date, ntile(4) OVER (ORDER BY steps) AS lvl
+            FROM gold_daily_activity WHERE steps > 0
+        )
+        SELECT a.local_date, a.steps, a.active_kcal, a.distance_km,
+               coalesce(k.lvl, 0) AS level_kcal,
+               coalesce(s.lvl, 0) AS level_steps
+        FROM gold_daily_activity a
+        LEFT JOIN kcal_ranked k USING (local_date)
+        LEFT JOIN steps_ranked s USING (local_date)
+        ORDER BY local_date
+        """
+    )
+
     # -- sleep: minutes per stage per night ------------------------------------
     con.execute(
         f"""
