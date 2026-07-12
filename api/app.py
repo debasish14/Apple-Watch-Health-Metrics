@@ -32,6 +32,18 @@ if cors_origins:
 log = logging.getLogger(__name__)
 
 
+@app.get("/")
+def index():
+    """People open the printed server URL; point them somewhere useful."""
+    return jsonify({
+        "service": "apple-watch-health-metrics API",
+        "dashboard": "run `make frontend` and open http://localhost:5173",
+        "endpoints": ["/api/health", "/api/health-metrics", "/api/summary",
+                      "/api/quality", "/api/metrics/<name>", "POST /api/upload"],
+        "metrics": sorted(queries.METRIC_TABLES),
+    })
+
+
 @app.get("/api/health")
 def health():
     return jsonify({"status": "ok", "data_ready": queries.gold_ready()})
