@@ -1,118 +1,102 @@
 # ⌚ Apple Watch Health Metrics
 
-A full-stack application and data analysis toolkit designed to process, analyze, and visualize your personal Apple Health data exports. Turn your raw XML watch data into actionable insights and beautiful visualizations!
+A data-engineering pipeline + dashboard for Apple Health exports. A 279MB
+`export.xml` goes from raw XML to pre-aggregated serving tables in ~3.5s,
+queried by a thin Flask API and rendered in a React dashboard.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![React](https://img.shields.io/badge/React-18-blue.svg)
-![Flask](https://img.shields.io/badge/Flask-Backend-green.svg)
+## Architecture
 
----
+Medallion pipeline on **DuckDB + Parquet** — no Spark, no external database.
+Personal-scale data (hundreds of MB) fits comfortably on one machine; the
+engineering value is in the layering, not the cluster.
 
-## ✨ Features
-
-- **Automated XML Parsing**: Converts heavy Apple Health `export.xml` files into optimized, readable `.csv` datasets.
-- **Advanced Python Analysis**: Standalone scripts to conduct deep dives into your health trends (workouts, heart rate, body mass).
-- **Interactive Web Dashboard**:
-  - **React + Vite Frontend**: Rapid and responsive web UI built with Tailwind CSS.
-  - **Recharts Integrations**: Beautiful, dynamic graphs displaying your health and workout metrics.
-  - **Flask Backend**: Processes uploaded files and serves health data through robust APIs.
-- **Privacy First**: All data is processed locally. Your personal `.csv` and `.xml` datasets never leave your machine (unless you choose otherwise).
-
----
-
-## 🏗️ Project Structure
-
-```bash
-Apple Watch Health Metrics/
-├── backend/                  # Flask REST API handling data processing & uploads
-├── frontend/                 # Vite + React web application with Tailwind
-├── apple_health_export/      # 🚫 Your raw Apple Health export.xml (ignored by git)
-├── output_plots/             # 🚫 Generated charts from python offline scripts (ignored by git)
-├── analyze_health_data.py    # Offline python analytics script
-├── advanced_insights_analysis.py # Deep learning / advanced metric extraction script
-└── xml_to_csv.py             # Script to parse export.xml into CSVs
+```
+export.xml ──► BRONZE ──────► SILVER ─────────► GOLD ──────────► API ─► React
+   279MB      raw XML to     typed, deduped,   pre-aggregated   read-only
+              Parquet        validated,        daily rollups    DuckDB
+              (streaming,    DQ-counted        in health.duckdb queries
+              ~10MB)         (~3MB)
 ```
 
----
+- **Bronze** (`pipeline/bronze.py`) — streams XML with `iterparse` (constant
+  memory), preserves records as exported, flattens nested `WorkoutStatistics`
+  (modern exports keep workout energy there, not in attributes).
+- **Silver** (`pipeline/silver.py`) — pure DuckDB SQL: type casting, exact-
+  duplicate removal, timestamp/value validation with per-reason reject
+  counters, wall-clock `local_date` for day bucketing (exports carry local
+  time + UTC offset).
+- **Gold** (`pipeline/gold.py`) — serving tables: daily heart rate / resting
+  HR / HRV / respiratory rate, sleep stages per night, VO2max, weight,
+  workouts, and daily activity with **source dedup** (steps & energy arrive
+  from both iPhone and Watch; per day we keep the largest single source
+  instead of double counting).
+- **Quality** (`pipeline/quality.py`) — every run emits a JSON data-quality
+  report (row counts per stage, reject reasons, threshold checks) to
+  `data/quality/`, also served at `/api/quality`.
 
-## 🚀 Getting Started
+Ingestion is decoupled from serving: the API only reads gold tables and
+never touches XML at request time.
 
-To run this project on your local machine, you'll need to set up both the backend server and the frontend development server.
+## Quick start
 
-### 1. Prerequisites
-- Python 3.8+
-- Node.js (v16+ recommended)
-- An Apple Health export (Go to Health App on iPhone -> Profile -> Export All Health Data)
+```bash
+make setup                                   # venv + pip + npm install
+make ingest EXPORT=path/to/export.xml        # run the pipeline
+make serve                                   # Flask API on :5001
+make frontend                                # Vite dev server on :5173 (proxies /api)
+make test                                    # pytest suite (synthetic-XML e2e)
+```
 
-### 2. Setting up the Backend (Flask)
+Get an export: iPhone Health app → profile picture → *Export All Health Data*.
 
-1. Open a terminal and navigate to the `backend` folder:
-   ```bash
-   cd backend
-   ```
-2. Create and activate a Python virtual environment:
-   ```bash
-   # On macOS/Linux
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-3. Install the dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Start the Flask server:
-   ```bash
-   python app.py
-   ```
-   *The backend will typically run on `http://127.0.0.1:5000`.*
+## API
 
-### 3. Setting up the Frontend (React + Vite)
+| Endpoint               | Returns                                        |
+| ---------------------- | ---------------------------------------------- |
+| `GET /api/health`      | liveness + whether gold data exists            |
+| `GET /api/health-metrics` | dashboard bundle (summary, HR trend, weight, workouts) |
+| `GET /api/metrics/<name>` | one gold table; unknown names list what's available |
+| `GET /api/summary`     | one-row totals (workouts, kcal, avg HR, ...)   |
+| `GET /api/quality`     | latest pipeline data-quality report            |
+| `POST /api/upload`     | multipart `export.xml`; runs the full pipeline |
 
-1. Open a new terminal and navigate to the `frontend` folder:
-   ```bash
-   cd frontend
-   ```
-2. Install the Node modules:
-   ```bash
-   npm install
-   ```
-3. Start the Vite development server:
-   ```bash
-   npm run dev
-   ```
-   *The frontend will be available at `http://localhost:5173` (or the port specified in your terminal).*
+Metric names: `heart-rate`, `resting-hr`, `hrv`, `respiratory-rate`,
+`vo2max`, `weight`, `activity`, `sleep`, `workouts`, `workout-summary`.
 
----
+Config via env: `PORT`, `HEALTH_DATA_DIR`, `CORS_ORIGINS`, `MAX_UPLOAD_MB`.
 
-## 📊 Using the Standalone Python Scripts
+## Deployment (AWS free tier)
 
-If you just want to analyze your data offline using Python (without the web UI):
+**Backend — Elastic Beanstalk (Python platform):**
 
-1. Make sure you are in the project root directory.
-2. Unzip your Apple Health data and place the `export.xml` file inside an `apple_health_export/` folder.
-3. Install the root python dependencies (pandas, matplotlib, etc.):
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Run the parser to generate your CSVs:
-   ```bash
-   python xml_to_csv.py
-   ```
-5. Run the analytics scripts to generate plots and insights:
-   ```bash
-   python analyze_health_data.py
-   python advanced_insights_analysis.py
-   ```
+```bash
+pip install awsebcli
+eb init -p python-3.13 health-metrics --region ap-south-1
+eb create health-metrics-env --single --instance-types t3.micro
+eb setenv CORS_ORIGINS=https://<your-frontend-domain> HEALTH_DATA_DIR=/var/app/data
+```
 
----
+The `Procfile` starts gunicorn; EB routes to port 8000. A `Dockerfile` is
+also included if you prefer EB's Docker platform or any container host.
 
-## 🛡️ Privacy Notice
+**Frontend — S3 + CloudFront:**
 
-**Do NOT commit your personal health data to a public repository!** 
-A `.gitignore` file has been pre-configured to automatically exclude `*.csv`, `*.xml`, `node_modules/`, Python environments, and auto-generated plots. Verify your `git status` before pushing to ensure personal payload folders (like `apple_health_export/` and `health_records.csv`) remain local.
+```bash
+cd frontend && npm run build
+aws s3 sync dist/ s3://<bucket> --delete
+# point a CloudFront distribution at the bucket; add a behavior forwarding
+# /api/* to the Elastic Beanstalk environment URL
+```
 
----
+Data is personal — the repo ignores `apple_health_export/`, `data/`, and all
+`*.xml`/`*.csv` so nothing sensitive can be committed.
 
-## 🤝 Contributing
+## Layout
 
-Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
+```
+pipeline/     bronze.py silver.py gold.py quality.py run.py config.py
+api/          app.py (Flask) queries.py (read-only DuckDB, whitelisted tables)
+frontend/     Vite + React + Recharts dashboard
+tests/        pytest: dedup, aggregation, DQ, API (synthetic XML fixture)
+data/         (generated, gitignored) bronze/ silver/ gold/ quality/
+```
