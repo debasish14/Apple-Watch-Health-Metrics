@@ -1,31 +1,22 @@
 # System files
 .DS_Store
 
-# Python Environments
-venv/
+# Python
 .venv/
-
-# Node Modules
-node_modules/
-
-# Python Compilation Files
+venv/
 __pycache__/
 *.pyc
 
-# Personal Data & Raw Exports
+# Node
+node_modules/
+frontend/dist/
+
+# Personal data: raw exports and every pipeline artifact derived from them
 apple_health_export/
+data/
 *.xml
 *.csv
 
-# Output & Dynamically Generated Data
-output_plots/
-
-# Backend Specifics
-backend/venv/
-backend/uploads/
-backend/processed_data/
-backend/test_export.xml
-
-# Environment Variables
+# Environment
 .env
 .env.local

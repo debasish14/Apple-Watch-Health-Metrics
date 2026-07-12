@@ -55,31 +55,31 @@ const Dashboard = () => {
 
             {metrics && (
                 <div className="space-y-8 fade-in">
-                    {/* Summary Cards */}
+                    {/* Summary Cards — values pre-computed by the pipeline (gold_summary) */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         <MetricCard
                             title="Total Workouts"
-                            value={metrics.workouts ? metrics.workouts.reduce((acc, curr) => acc + curr.value, 0) : 0}
+                            value={metrics.summary?.total_workouts ?? 0}
                             icon={Activity}
                             subtext="Recorded activities"
                         />
                         <MetricCard
                             title="Avg Heart Rate"
-                            value={metrics.heartRate ? `${Math.round(metrics.heartRate.reduce((acc, c) => acc + c.value, 0) / metrics.heartRate.length)} BPM` : "--"}
+                            value={metrics.summary?.avg_heart_rate ? `${metrics.summary.avg_heart_rate} BPM` : '—'}
                             icon={Heart}
-                            subtext="Across all collected days"
+                            subtext="Daily average across all days"
                         />
                         <MetricCard
                             title="Current Weight"
-                            value={metrics.weight && metrics.weight.length > 0 ? `${metrics.weight[metrics.weight.length - 1].value} kg` : "--"}
+                            value={metrics.summary?.latest_weight ? `${metrics.summary.latest_weight} kg` : '—'}
                             icon={Scale}
                             subtext="Most recent record"
                         />
                         <MetricCard
                             title="Calories Burned"
-                            value="--"
+                            value={metrics.summary?.workout_kcal ? `${Math.round(metrics.summary.workout_kcal).toLocaleString()} kcal` : '—'}
                             icon={Flame}
-                            subtext="Not yet implemented"
+                            subtext="Active energy across workouts"
                         />
                     </div>
 

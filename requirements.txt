@@ -1,3 +1,9 @@
-pyspark
-pandas
-matplotlib
+# Pipeline + API dependencies (single environment for the whole backend)
+duckdb>=1.0
+pyarrow>=16
+flask>=3.0
+flask-cors>=4.0
+gunicorn>=22
+
+# dev/test
+pytest>=8
